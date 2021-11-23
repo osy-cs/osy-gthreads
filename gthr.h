@@ -6,7 +6,7 @@
 
 #ifndef GT_PREEMPTIVE 
 
-#define GT_PREEMPTIVE 0
+#define GT_PREEMPTIVE 1
 
 #endif
 
