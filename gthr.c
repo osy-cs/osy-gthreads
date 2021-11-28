@@ -57,7 +57,7 @@ void gt_sig_handle( int t_sig )
 void gt_init( void ) 
 {
     g_gtcur = & g_gttbl[ 0 ];           // initialize current thread with thread #0
-    g_gtcur -> proc_state = Running;    // set current to running
+    g_gtcur -> thread_state = Running;  // set current to running
 #if ( GT_PREEMPTIVE != 0 )
     gt_sig_start();
 #endif
@@ -69,7 +69,7 @@ void gt_ret( int t_ret )
 {
     if ( g_gtcur != & g_gttbl[ 0 ] )    // if not an initial thread,
     {
-        g_gtcur -> proc_state = Unused; // set current thread as unused
+        g_gtcur -> thread_state = Unused;// set current thread as unused
         gt_yield();                     // yield and make possible to switch to another thread
         assert( !"reachable" );         // this code should never be reachable ... (if yes, returning function on stack was corrupted)
     }
@@ -79,7 +79,8 @@ void gt_scheduler( void )
 {
     while ( gt_yield() )                // if initial thread, wait for other to terminate
     {
-        sleep( 1 );                     // idle, simulate CPU HW sleep
+        if ( GT_PREEMPTIVE )
+            usleep( TimePeriod * 1000 );// idle, simulate CPU HW sleep
     }
 }
 
@@ -92,21 +93,22 @@ int gt_yield( void )
     int l_no_ready = 0;                 // not ready processes
 
     p = g_gtcur;
-    while ( p -> proc_state != Ready )  // iterate through g_gttbl[] until we find new thread in state Ready 
+    while ( p -> thread_state != Ready )// iterate through g_gttbl[] until we find new thread in state Ready 
     {
-        if ( p -> proc_state == Blocked || p -> proc_state == Suspended ) l_no_ready++;
-                                        // number of Blocked and Suspend processes
+        if ( p -> thread_state == Blocked || p -> thread_state == Suspended ) 
+            l_no_ready++;               // number of Blocked and Suspend processes
 
-        if ( ++p == & g_gttbl[ MaxGThreads ] )  // at the end rotate to the beginning
+        if ( ++p == & g_gttbl[ MaxGThreads ] )// at the end rotate to the beginning
             p = & g_gttbl[ 0 ];
         if ( p == g_gtcur )             // did not find any other Ready threads
         {
-            return l_no_ready;
+            return - l_no_ready;        // no task ready, or task table empty
         }
     }
-    if ( g_gtcur -> proc_state != Unused )  // switch current to Ready and new thread found in previous loop to Running
-        g_gtcur -> proc_state = Ready;
-    p -> proc_state = Running;
+
+    if ( g_gtcur -> thread_state == Running )// switch current to Ready and new thread found in previous loop to Running
+        g_gtcur -> thread_state = Ready;
+    p -> thread_state = Running;
     l_old = & g_gtcur -> regs;          // prepare pointers to context of current (will become old) 
     l_new = & p -> regs;                // and new to new thread found in previous loop
     g_gtcur = p;                        // switch current indicator to new thread
@@ -135,7 +137,7 @@ int gt_go( void ( * t_run )( void ) )
     for ( p = & g_gttbl[ 0 ];; p++ )            // find an empty slot
         if ( p == & g_gttbl[ MaxGThreads ] )    // if we have reached the end, gttbl is full and we cannot create a new thread
             return -1;
-        else if ( p -> proc_state == Unused )
+        else if ( p -> thread_state == Unused )
             break;                              // new slot was found
 
     l_stack = ( char * ) malloc( StackSize );   // allocate memory for stack of newly created thread
@@ -145,7 +147,7 @@ int gt_go( void ( * t_run )( void ) )
     *( uint64_t * ) & l_stack[ StackSize - 8 ] = ( uint64_t ) gt_stop;  //  put into the stack returning function gt_stop in case function calls return
     *( uint64_t * ) & l_stack[ StackSize - 16 ] = ( uint64_t ) t_run;   //  put provided function as a main "run" function
     p -> regs.rsp = ( uint64_t ) & l_stack[ StackSize - 16 ];           //  set stack pointer
-    p -> proc_state = Ready;                                            //  set state
+    p -> thread_state = Ready;                                          //  set state
 
     return 0;
 }

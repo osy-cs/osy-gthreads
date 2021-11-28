@@ -13,7 +13,7 @@
 enum {
     MaxGThreads = 5,                // Maximum number of threads, used as array size for gttbl
     StackSize = 0x400000,           // Size of stack of each thread
-    TimePeriod = 10                 // Time period of Timer
+    TimePeriod = 10,                // Time period of Timer
 };
 
 
@@ -24,7 +24,7 @@ typedef enum {
     Ready,
     Blocked,
     Suspended,
-} gt_proc_state_t;
+} gt_thread_state_t;
 
 
 struct gt_context_t {
@@ -41,7 +41,7 @@ struct gt_context_t {
     }
     regs;
 
-    gt_proc_state_t proc_state;     // process state
+    gt_thread_state_t thread_state; // process state
 };
 
 

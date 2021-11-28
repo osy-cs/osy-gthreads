@@ -4,8 +4,8 @@ CFLAGS = -g -Wall
 
 all: gttest
 
-gttest: gthr.c main.c gtswtch.o gthr.h
-	$(CC) -Wall -o $@ $^
+gttest: gthr.c main.c gtswtch.o gthr.h Makefile
+	$(CC) -g -Wall $(filter %.c %.o, $^) -o $@
 
 .S.o:
 	as -o $@ $^
