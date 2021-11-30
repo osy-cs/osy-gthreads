@@ -14,27 +14,29 @@
 .globl _gt_swtch, gt_swtch
 .globl _gt_pree_swtch, gt_pree_swtch
 
+.intel_syntax noprefix
+
 _gtswtch:
 gt_swtch:
 
-        mov     %r15, 0x10(%rdi)
-        mov     %r14, 0x18(%rdi)
-        mov     %r13, 0x20(%rdi)
-        mov     %r12, 0x28(%rdi)
-        mov     %rbx, 0x30(%rdi)
+        mov     [ rdi + 0x10 ], r15
+        mov     [ rdi + 0x18 ], r14
+        mov     [ rdi + 0x20 ], r13
+        mov     [ rdi + 0x28 ], r12
+        mov     [ rdi + 0x30 ], rbx
 
-        mov     0x10(%rsi), %r15
-        mov     0x18(%rsi), %r14
-        mov     0x20(%rsi), %r13
-        mov     0x28(%rsi), %r12
-        mov     0x30(%rsi), %rbx
+        mov     r15, [ rsi + 0x10 ]
+        mov     r14, [ rsi + 0x18 ]
+        mov     r13, [ rsi + 0x20 ]
+        mov     r12, [ rsi + 0x28 ]
+        mov     rbx, [ rsi + 0x30 ]
 
 _gt_pree_swtch:
 gt_pree_swtch:
-        mov     %rsp, 0x00(%rdi)
-        mov     %rbp, 0x08(%rdi)
+        mov     [ rdi + 0x00 ], rsp
+        mov     [ rdi + 0x08 ], rbp
 
-        mov     0x00(%rsi), %rsp
-        mov     0x08(%rsi), %rbp
-        
-        ret 
+        mov     rsp, [ rsi + 0x00 ]
+        mov     rbp, [ rsi + 0x08 ]
+
+        ret
