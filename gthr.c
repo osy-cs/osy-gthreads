@@ -18,21 +18,38 @@ struct gt_context_t * g_gtcur;              // pointer to current thread
 
 #if ( GT_PREEMPTIVE != 0 )
 
+volatile int g_gt_yield_status = 1;         // yield status 
+
 void gt_sig_handle( int t_sig );
 
-// initialize SIGALRM
+// initialize and start SIGALRM
 void gt_sig_start( void )
 {
     struct sigaction l_sig_act;
-    bzero( &l_sig_act, sizeof( l_sig_act ) );
+    memset( &l_sig_act, 0, sizeof( l_sig_act ) );
     l_sig_act.sa_handler = gt_sig_handle;
 
     sigaction( SIGALRM, &l_sig_act, NULL );
-    ualarm( TimePeriod * 1000, TimePeriod * 1000 );
+
+    struct itimerval l_tv_alarm = { { 0, TimePeriod * 1000 }, { 0, TimePeriod * 1000 } };
+    setitimer( ITIMER_REAL, & l_tv_alarm, NULL );
+}
+
+// deinitialize and stop SIGALRM
+void gt_sig_stop( void )
+{
+    struct itimerval l_tv_alarm = { { 0, 0 }, { 0, 0 } };
+    setitimer( ITIMER_REAL, & l_tv_alarm, NULL );
+
+    struct sigaction l_sig_act;
+    memset( &l_sig_act, 0, sizeof( l_sig_act ) );
+    l_sig_act.sa_handler = SIG_DFL;
+
+    sigaction( SIGALRM, &l_sig_act, NULL );
 }
 
 // unblock SIGALRM
-void gt_sig_reset( void ) 
+void gt_sig_mask_reset( void ) 
 {
     sigset_t l_set;                     // Create signal set
     sigemptyset( & l_set );             // Clear it
@@ -44,11 +61,11 @@ void gt_sig_reset( void )
 // function triggered periodically by timer (SIGALRM)
 void gt_sig_handle( int t_sig ) 
 {
-    gt_sig_reset();                     // enable SIGALRM again
+    gt_sig_mask_reset();                // enable SIGALRM again
 
     // .... manage timers here
 
-    gt_yield();                         // scheduler
+    g_gt_yield_status = gt_yield();     // scheduler
 }
 
 #endif
@@ -58,14 +75,11 @@ void gt_init( void )
 {
     g_gtcur = & g_gttbl[ 0 ];           // initialize current thread with thread #0
     g_gtcur -> thread_state = Running;  // set current to running
-#if ( GT_PREEMPTIVE != 0 )
-    gt_sig_start();
-#endif
 }
 
 
 // exit thread
-void gt_ret( int t_ret ) 
+void gt_stop( void ) 
 {
     if ( g_gtcur != & g_gttbl[ 0 ] )    // if not an initial thread,
     {
@@ -75,13 +89,18 @@ void gt_ret( int t_ret )
     }
 }
 
-void gt_scheduler( void )
+void gt_start_scheduler( void )
 {
-    while ( gt_yield() )                // if initial thread, wait for other to terminate
+#if ( GT_PREEMPTIVE != 0 )
+    gt_sig_start();                     // gt_yield() will be called from gt_sig_handler()
+    while ( g_gt_yield_status )
     {
-        if ( GT_PREEMPTIVE )
-            usleep( TimePeriod * 1000 );// idle, simulate CPU HW sleep
+        usleep( TimePeriod * 1000 + 1000 ); // idle, simulate CPU HW sleep
     }
+    gt_sig_stop();
+#else
+    while ( gt_yield() ) {}             // if initial thread, wait for other to terminate
+#endif
 }
 
 
@@ -118,13 +137,6 @@ int gt_yield( void )
     gt_swtch( l_old, l_new );           // perform context switch (assembly in gtswtch.S)
 #endif
     return 1;
-}
-
-
-// return function for terminating thread
-void gt_stop( void ) 
-{
-    gt_ret( 0 );
 }
 
 

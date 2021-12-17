@@ -49,15 +49,11 @@ void gt_init( void );                       // initialize gttbl
 int  gt_go( void ( * t_run )( void ) );     // create new thread and set f as new "run" function
 void gt_stop( void );                       // terminate current thread
 int  gt_yield( void );                      // yield and switch to another thread
-void gt_scheduler( void );                  // start scheduler, wait for all tasks
+void gt_start_scheduler( void );            // start scheduler, wait for all tasks
 
-void gt_ret( int t_ret );                   // terminate thread
 
-#if ( GT_PREEMPTIVE == 0 )
 void gt_swtch( struct gt_regs * t_old, struct gt_regs * t_new );        // declaration from gtswtch.S
-#else
 void gt_pree_swtch( struct gt_regs * t_old, struct gt_regs * t_new );   // declaration from gtswtch.S
-#endif
 
 int uninterruptibleNanoSleep( time_t sec, long nanosec );   // uninterruptible sleep
 
